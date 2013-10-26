@@ -21,5 +21,6 @@ building it.
 
 ### Updates:
 * Week1 code
-
+* Week2 code
+* Week3 code
 
