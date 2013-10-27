@@ -9,13 +9,6 @@ datatype pattern = Wildcard
 		 | TupleP of pattern list
 		 | ConstructorP of string * pattern
 
-datatype valu = Const of int
-	      | Unit
-	      | Tuple of valu list
-	      | Constructor of string * valu
-
-
-
 (**** for the challenge problem only ****)
 
 datatype typ = Anything
@@ -58,18 +51,16 @@ fun first_answer f = fn l =>
 			    check_elements(l)
 			end
 
-
 fun all_answers f = fn l =>
 			let fun check_elements(list, acc) =
 				  case list of
 				      [] => SOME acc
 				   | x::xs' => case f(x) of
 						   NONE  => NONE
-						 | SOME _ => check_elements(xs', x::acc)
+						 | SOME x' => check_elements(xs', x'@acc)
 			in  
 			    check_elements(l, [])
 			end
-
 
 fun g f1 f2 p =
     let 
@@ -92,27 +83,53 @@ fun count_wild_and_variable_lengths pattern =
 fun count_some_var(s : string, p : pattern) =
     g (fn x => 0) (fn y => if s = y then 1 else 0) p
 
-
 fun h p =
-    let 
-	val r = h
-    in
 	case p of
 	    Variable x        => [x]
-	  | TupleP ps         => List.foldl(fn(p, i) => (r p) @ i) [] ps
-	  | ConstructorP(_,p) => r p
+	  | TupleP ps         => List.foldl(fn(p, i) => (h p) @ i) [] ps
+	  | ConstructorP(_,p) => h p
 	  | _                 => []
-    end
 
 fun check_if_unique(list : string list) =
-    if null (tl list)
+    if null list
     then true
     else 
 	if List.exists (fn x => x = hd list) (tl list)
 	then false
 	else check_if_unique(tl list)
+(*
+datatype pattern = Wildcard
+		 | Variable of string
+		 | UnitP
+		 | ConstP of int
+		 | TupleP of pattern list
+		 | ConstructorP of string * pattern
+*)
+datatype valu = Const of int
+	      | Unit
+	      | Tuple of valu list
+	      | Constructor of string * valu
 
 fun check_pat pattern =
     check_if_unique(h pattern)
 
-(* fun match(v : valu, p : pattern) = *)
+
+fun match (v : valu, p : pattern) =
+    case p of
+	Wildcard => SOME []
+      | Variable s => SOME [(s, v)]
+      | UnitP => if v = Unit then SOME [] else NONE
+      | ConstructorP(s1,pa) => (case v of Constructor(s2, va) => if s1 = s2 then match(va,pa) else NONE 
+				       | _ => NONE )
+      | ConstP a => (case v of Const b => if a = b then SOME [] else NONE 
+			    | _ => NONE )
+      | TupleP pl => (case v of 
+			Tuple vl => if List.length(pl) = List.length(vl) 
+				    then all_answers(fn (x, y) => match(x, y)) (ListPair.zip(vl, pl)) 
+				    else NONE
+		       | _ => NONE )
+
+
+fun first_match v p = 
+    SOME (first_answer(fn x => match(v, x)) p)
+    handle NoAnswer => NONE
