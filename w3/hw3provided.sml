@@ -1,5 +1,4 @@
 (* Coursera Programming Languages, Homework 3, Provided Code *)
-
 exception NoAnswer
 
 datatype pattern = Wildcard
@@ -8,6 +7,11 @@ datatype pattern = Wildcard
 		 | ConstP of int
 		 | TupleP of pattern list
 		 | ConstructorP of string * pattern
+
+datatype valu = Const of int
+	      | Unit
+	      | Tuple of valu list
+	      | Constructor of string * valu
 
 (**** for the challenge problem only ****)
 
@@ -41,26 +45,22 @@ fun rev_string (s : string) =
     (String.implode o List.rev o String.explode) s
 
 fun first_answer f = fn l =>
-			let fun check_elements(list) =
-				  case list of
-				      [] => raise NoAnswer
-				   | x::xs' => case f(x) of
-						   SOME y => y 
-						 | _ => check_elements(xs')
-			in 
-			    check_elements(l)
-			end
+    case l of
+	 [] => raise NoAnswer
+    | x::xs' => case f(x) of
+		    SOME y => y
+		  | _ => first_answer f xs'
 
 fun all_answers f = fn l =>
-			let fun check_elements(list, acc) =
-				  case list of
-				      [] => SOME acc
-				   | x::xs' => case f(x) of
-						   NONE  => NONE
-						 | SOME x' => check_elements(xs', x'@acc)
-			in  
-			    check_elements(l, [])
-			end
+    let fun check_elements(list, acc) =
+	case list of
+	    [] => SOME acc
+	  | x::xs' => case f(x) of
+			  NONE  => NONE
+			| SOME x' => check_elements(xs', x'@acc)
+    in  
+	check_elements(l, [])
+    end
 
 fun g f1 f2 p =
     let 
@@ -91,28 +91,14 @@ fun h p =
 	  | _                 => []
 
 fun check_if_unique(list : string list) =
-    if null list
-    then true
-    else 
-	if List.exists (fn x => x = hd list) (tl list)
-	then false
-	else check_if_unique(tl list)
-(*
-datatype pattern = Wildcard
-		 | Variable of string
-		 | UnitP
-		 | ConstP of int
-		 | TupleP of pattern list
-		 | ConstructorP of string * pattern
-*)
-datatype valu = Const of int
-	      | Unit
-	      | Tuple of valu list
-	      | Constructor of string * valu
+    if not (null list)
+    then 	
+	if List.exists (fn x => x = hd list) (tl list) 
+	then false else check_if_unique(tl list)
+    else true
 
 fun check_pat pattern =
     check_if_unique(h pattern)
-
 
 fun match (v : valu, p : pattern) =
     case p of
@@ -128,7 +114,6 @@ fun match (v : valu, p : pattern) =
 				    then all_answers(fn (x, y) => match(x, y)) (ListPair.zip(vl, pl)) 
 				    else NONE
 		       | _ => NONE )
-
 
 fun first_match v p = 
     SOME (first_answer(fn x => match(v, x)) p)
