@@ -12,4 +12,4 @@
 ; parentheses missing in last call to fact4
 (define (fact4 n) (if (= n 0) 1 (* n fact4 (- n 1))))
 
-(define (fact5 n) (if (= n 0) 1 (* n ((fact5 (- n 1))))))
+(define (fact5 n) (if (= n 0) 1 (* n (fact5 (- n 1)))))

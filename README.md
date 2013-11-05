@@ -24,4 +24,4 @@ building it.
 * Week2 code
 * Week3 code
 * Week4 code
-* Week5 code (some)
+* Week5 code (introductory Racket code)
