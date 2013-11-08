@@ -13,7 +13,8 @@
   (letrec ([f (lambda (x) (cons x (lambda() (f (+ x 1)))))])
     (lambda () (f 1))))
 
+
 ; 2 4 8 16 32
 (define powers-of-two
   (letrec ([f (lambda (x) (cons x (lambda() (f (* x 2)))))])
-    (lambda (f 2))))
+    (lambda () (f 2))))
