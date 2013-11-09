@@ -20,8 +20,8 @@ Get ready to learn a fresh and beautiful way to look at software and how to have
 building it.
 
 ### Updates:
-* Week1 code
-* Week2 code
-* Week3 code
-* Week4 code
-* Week5 code (introductory Racket code)
+* Week1 code + hw1
+* Week2 code + hw2
+* Week3 code + hw3
+* Week4 code (no hw)
+* Week5 code + hw4

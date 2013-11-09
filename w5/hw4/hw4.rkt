@@ -21,12 +21,6 @@
           [(null? xs)  (error "list-nth-mod: empty list")]
           [#t (car (list-tail xs (remainder n (length xs))))])))
 
-(define ones (lambda () (cons 1 ones)))
-
-(define powers-of-two
-  (letrec ([f (lambda (x) (cons x (lambda() (f (* x 2)))))])
-    (lambda () (f 2))))
-
 (define (stream-for-n-steps s n)
   ; define helper lambda 
   ; c - counter (n -> 0)
@@ -66,9 +60,32 @@
    
 (define (vector-assoc v vec)
   (cond
-    [(= 0 (vector-length vec)) #f]
-    [(pair? (vector-ref vec 0)) (cond [(= v (car(vector-ref vec 0))) (vector-ref vec 0)]
+    [(equal? 0 (vector-length vec)) #f]
+    [(pair? (vector-ref vec 0)) (cond [(equal? v (car(vector-ref vec 0))) (vector-ref vec 0)]
                                       [#t (vector-assoc v (vector-drop vec 1))])]
     [#t (vector-assoc v (vector-drop vec 1))]))
-         
-         
+
+(define (cached-assoc xs n)
+  (letrec([cache (make-vector n #f)]
+          [next 0]
+          [f (lambda (x)
+               ;(write cache)
+               ;(write next)
+               (let ([ans (vector-assoc x cache)])
+                 (if ans
+                     (cdr ans)
+                     (let ([new-ans (assoc x xs)])
+                       (begin
+                         (if new-ans (vector-set! cache (remainder next n) new-ans) new-ans)
+                         (if new-ans (set! next (+ 1 next)) new-ans)
+                         new-ans)))))])
+    f))
+
+
+
+
+
+
+
+
+
