@@ -57,40 +57,49 @@
         ; if int return expression
         [(int? e) e]
         ; fun  (nameopt formal body)
-        [(fun? e) (closure (list (cons (fun-nameopt e) (fun (fun-nameopt e) 
+        ; (list (cons (s1, (f s1 s2 e))), (cons s2, e)) 
+        [(fun? e) (closure (if (fun-nameopt e)
+                               (list (cons (fun-nameopt e) (fun (fun-nameopt e) 
                                  (fun-formal e) (fun-body e))) (cons (fun-formal e) (fun-body e)))
+                               '())
                            (fun (fun-nameopt e) 
                                  (fun-formal e) (fun-body e)))]
         ; if greater      check which is greater by calling eval-under-env for e1 and e2
-        [(ifgreater? e) (> (int-num (eval-under-env (ifgreater-e1 e) env)) (int-num (eval-under-env(ifgreater-e2 e) env)))
-                        (eval-under-env (ifgreater-e3 e) env)
-                        (eval-under-env (ifgreater-e4 e) env)]
+        [(ifgreater? e) (if (> (int-num (eval-under-env (ifgreater-e1 e) env)) (int-num (eval-under-env(ifgreater-e2 e) env)))
+                            (eval-under-env (ifgreater-e3 e) env)
+                            (eval-under-env (ifgreater-e4 e) env))]
         ;An mlet expression evaluates its first expression to a value v. Then it evaluates the second
         ;expression to a value, in an environment extended to map the name in the mlet expression to v.
-        ; (var e body)
-        [(mlet? e) (eval-under-env (mlet-body e) (list (cons (mlet-var e) (mlet-e e))))]
+        ; mlet (var e body)
+        [(mlet? e) (eval-under-env (mlet-body e) (append env (list (cons (mlet-var e) (eval-under-env(mlet-e e) env)))))]
+        [(closure? e) e]
         ;A call evaluates its first and second subexpressions to values. If the first is not a closure, it is an
         ;error. Else, it evaluates the closure’s function’s body in the closure’s environment extended to map
         ;the function’s name to the closure (unless the name field is #f) and the function’s argument-name8
         ;(i.e., the parameter name) to the result of the second subexpression.
         ; call (funexp actual)
         ; closure (env fun)
-        [(call? e) (if (closure? (call-funexp e))
+        [(call? e) (if (closure? (eval-under-env(call-funexp e) env))
                        ;evaluate        body of a closure function on closure    with env from closure fun
-                       (eval-under-env (fun-body (closure-fun (call-funexp e))) (if (fun-nameopt (closure-fun(call-funexp e)))
-                                                                                ; if function has a name    
-                                                                                (list (cons (fun-nameopt (closure-fun(call-funexp e))) (call-funexp e)) (cons (fun-formal(closure-fun(call-funexp e))) (eval-under-env(call-actual e) '())))
-                                                                                ; if function name is #f it gives for example -> (("x", 1))
-                                                                                (list (cons (fun-formal(closure-fun(call-funexp e))) (eval-under-env(call-actual e) '()) ))))
-                                                                                                                                                      ;(list (cons (fun-formal(closure-fun(call-funexp e))) (eval-under-env(call-actual e) '()))))))))
+                       (eval-under-env (fun-body (closure-fun (eval-under-env(call-funexp e) env))) 
+                                       ; check if function has a name or if it is anonymous
+                                       (if (fun-nameopt (closure-fun (eval-under-env(call-funexp e) env)))
+                                           ; if function has a name
+                                           ;make environment of closure
+                                           (append (closure-env(eval-under-env(call-funexp e) env))
+                                                   ; and pair of (function argument name bound to 
+                                                   (list (cons (fun-formal(closure-fun (eval-under-env(call-funexp e) env))) (eval-under-env(call-actual e) '()) )))
+                                           ; if function name is #f it gives for example -> (("x", 1))
+                                           (append (closure-env(eval-under-env(call-funexp e) env)) 
+                                                   (list (cons (fun-formal(closure-fun (eval-under-env(call-funexp e) env))) (eval-under-env(call-actual e) '()) )))))
                        (error "Not a closure"))]
-        [(apair? e) (apair (eval-under-env(apair-e1 e)  (eval-under-env(apair-e2 e))))]
-        [(fst? e) (if (apair? (eval-under-env (fst-e e) env)) (apair-e1 (fst-e e)) (error "Not a pair"))]
-        [(snd? e) (if (apair? (eval-under-env (snd-e e) env)) (apair-e2 (snd-e e)) (error "Not a pair"))]
+        [(apair? e) (apair (eval-under-env(apair-e1 e) env)  (eval-under-env(apair-e2 e) env))]
+         ;(apair-e1 e)]
+        [(fst? e) (if (apair? (eval-under-env (fst-e e) '())) (apair-e1 (eval-under-env(fst-e e) '())) (error "Not a pair"))]
+        [(snd? e) (if (apair? (eval-under-env (snd-e e) '())) (apair-e2 (eval-under-env(snd-e e) '())) (error "Not a pair"))]
         ;An isaunit expression evaluates its subexpression. If the result is an aunit expression, then the
         ;result for the isaunit expression is the mupl value (int 1), else the result is the mupl value
-        ;(int 0).
-        ;[(isaunit? e) (
+        [(isaunit? e) (if (aunit? (eval-under-env(isaunit-e e) '())) (int 1) (int 0))]
         [#t (error (format "bad MUPL expression: ~v" e))]))
 
 ;(> (int-num (eval-under-env (ifgreater-e1 e) env)) (int-num (eval-under-env(ifgreater-e2 e) env)))
@@ -104,15 +113,24 @@
         
 ;; Problem 3
 
-(define (ifaunit e1 e2 e3) "CHANGE")
+(define (ifaunit e1 e2 e3) 
+  (ifgreater (isaunit e1) (int 0) e2 e3))
 
-(define (mlet* lstlst e2) "CHANGE")
+; mlet (var e body)
+(define (mlet* lstlst e2) 
+  (if (null? (cdr lstlst))
+      (mlet (car (car lstlst)) (cdr (car lstlst)) e2)
+      (mlet (car (car lstlst)) (cdr (car lstlst)) (mlet* (cdr lstlst) e2))))
 
-(define (ifeq e1 e2 e3 e4) "CHANGE")
+(define (ifeq e1 e2 e3 e4) 
+  (ifgreater e1 e2 (ifgreater e2 e1 e3 e4) (ifgreater e2 e1 e4 e3)))
 
 ;; Problem 4
 
-(define mupl-map "CHANGE")
+(define mupl-map
+  (lambda (func)
+    closure '() (lambda (list)
+                  func)))
 
 (define mupl-mapAddN 
   (mlet "map" mupl-map

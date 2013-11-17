@@ -21,41 +21,46 @@
 
    ;; tests if ifgreater returns (int 2)
    (check-equal? (eval-exp (ifgreater (int 3) (int 4) (int 3) (int 2))) (int 2) "ifgreater test")
+   
    ;; returns (int 3)
-   (check-equal? (eval-exp (ifgreater (int 4) (int 3) (int 3) (int 2))) (int 2) "ifgreater test")
+   (check-equal? (eval-exp (ifgreater (int 4) (int 3) (int 3) (int 2))) (int 3) "ifgreater test")
+   (check-equal? (eval-exp (ifgreater (int 3) (int 4) (int 3) (int 2))) (int 2) "ifgreater test")
+   (check-equal? (eval-exp (ifgreater (call(closure '() (fun #f "x" (add (var "x") (int 7)))) (int 5)) (add (int 1) (int 10)) (int 3) (int 4))) (int 3) "ifeq test")
    
-   ;(check-equal? (eval-exp (fun "f" "x" (var "x"))) (closure '() (fun "f" "x" (var "x"))) "test")
+   (check-equal? (eval-exp (fun #f "x" (add (var "x") (int 7)))) (closure '() (fun #f "x" (add (var "x") (int 7)))))
    
-   ;(check-equal? (eval-exp (fun #f "x" (add (var "x") (int 7)))) (closure '() (fun #f "x" (add (var "x") (int 7)))))
-   ;(check-equal? (eval-exp (call (fun #f "x" (add (var "x") (int 7))) (int 1))) (int 8) "call test")
+   (check-equal? (eval-exp (call (fun #f "x" (add (var "x") (int 7))) (int 1))) (int 8) "call test")
    
    ;; mlet test
-   (check-equal? (eval-exp (mlet "x" (int 1) (add (int 5) (var "x")))) (int 6) "mlet test")
+   (check-equal? (eval-exp (mlet "x" (add (int 1) (int 3)) (add (int 5) (var "x")))) (int 9) "mlet test")
    (check-equal? (eval-exp (mlet "x" (int -5) (add (int 5) (var "x")))) (int 0) "mlet test")
    (check-equal? (eval-exp (mlet "x" (int 2) (add (int 5) (var "x")))) (int 7) "mlet test")
    
    ;; call test
-   (check-equal? (eval-exp (call (closure '() (fun #f "x" (add (var "x") (int 7)))) (int 1))) (int 8) "call test")
-   ;(check-equal? (eval-exp (call (closure '() (fun #f "x" (add (var "x") (int 7)))) (int 1))) (int 8) "call test")
+   (check-equal? (eval-exp (call (closure '() (fun #f "x" (add (var "x") (int 7)))) (int 1))) (int 8) "call test")   
    
    ;;snd test
    (check-equal? (eval-exp (snd (apair (int 1) (int 2)))) (int 2) "snd test")
    
    ;; isaunit test
-   ;(check-equal? (eval-exp (isaunit (closure '() (fun #f "x" (aunit))))) (int 0) "isaunit test")
+   (check-equal? (eval-exp (isaunit (closure '() (fun #f "x" (aunit))))) (int 0) "isaunit test")
    
    ;; ifaunit test
-   ;(check-equal? (eval-exp (ifaunit (int 1) (int 2) (int 3))) (int 3) "ifaunit test")
+   (check-equal? (eval-exp (ifaunit (int 1) (int 2) (int 3))) (int 3) "ifaunit test")
    
    ;; mlet* test
-   ;(check-equal? (eval-exp (mlet* (list (cons "x" (int 10))) (var "x"))) (int 10) "mlet* test")
-   
+   (check-equal? (eval-exp (mlet* (list (cons "x" (int 10))) (var "x"))) (int 10) "mlet* test")
+   (check-equal? (eval-exp (mlet* (list (cons "x" (int 4)) (cons "y" (add (var "x") (int 98)))) (add (var "x") (var "y")))) (int 106) "mlet* test")
+  
    ;; ifeq test
-   ;(check-equal? (eval-exp (ifeq (int 1) (int 2) (int 3) (int 4))) (int 4) "ifeq test")
-   
+   (check-equal? (eval-exp (ifeq (int 1) (int 2) (int 3) (int 4))) (int 4) "ifeq test")
+   (check-equal? (eval-exp (ifeq (int 1) (int 1) (int 3) (int 4))) (int 3) "ifeq test")
+   (check-equal? (eval-exp (ifeq (call(closure '() (fun #f "x" (add (var "x") (int 7)))) (int 5)) (add (int 1) (int 12)) (int 3) (int 4))) (int 4) "ifeq test")
+   (check-equal? (eval-exp (ifeq (call(closure '() (fun #f "x" (add (var "x") (int 7)))) (int 5)) (add (int 1) (int 11)) (int 3) (int 4))) (int 3) "ifeq test")
+  
    ;; mupl-map test
    ;(check-equal? (eval-exp (call (call mupl-map (fun #f "x" (add (var "x") (int 7)))) (apair (int 1) (aunit)))) 
-   ;              (apair (int 8) (aunit)) "mupl-map test")
+   ;             (apair (int 8) (aunit)) "mupl-map test")
    
    ;; problems 1, 2, and 4 combined test
    ;(check-equal? (mupllist->racketlist
