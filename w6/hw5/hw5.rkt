@@ -23,12 +23,14 @@
 ;; Problem 1
 
 (define (racketlist->mupllist rlist)
-  (cond [(null? (cdr rlist)) (apair (car rlist) (aunit))]
+  (cond [(null? rlist) (aunit)] 
+        [(null? (cdr rlist)) (apair (car rlist) (aunit))]
         [#t (apair (car rlist) (racketlist->mupllist (cdr rlist)))]))
-  
+
 (define (mupllist->racketlist mlist)  
-  (cond [(equal? (apair-e2 mlist) (aunit))(apair-e1 mlist)]
-        [#t (list (apair-e1 mlist) (mupllist->racketlist (apair-e2 mlist)))]))
+  (cond [(equal? (aunit) mlist) '()]
+        [(equal? (apair-e2 mlist) (aunit)) (cons (apair-e1 mlist) null)]
+        [#t (append (list (apair-e1 mlist)) (mupllist->racketlist (apair-e2 mlist)))]))
 
 ;; Problem 2
 
@@ -44,6 +46,8 @@
 ;; We will test eval-under-env by calling it directly even though
 ;; "in real life" it would be a helper function of eval-exp.
 (define (eval-under-env e env)
+   ;(displayln (format "e: ~v" e))
+   ;(displayln (format "env: ~v~%" env))
   (cond [(var? e) 
          (envlookup env (var-string e))]
         [(add? e) 
@@ -56,18 +60,18 @@
                (error "MUPL addition applied to non-number" v1 )))]
         ; if int return expression
         [(int? e) e]
+        [(aunit? e) e]
         ; fun  (nameopt formal body)
         ; (list (cons (s1, (f s1 s2 e))), (cons s2, e)) 
-        [(fun? e) (closure (if (fun-nameopt e)
-                               (list (cons (fun-nameopt e) (fun (fun-nameopt e) 
-                                 (fun-formal e) (fun-body e))) (cons (fun-formal e) (fun-body e)))
-                               '())
+        [(fun? e) (closure env 
                            (fun (fun-nameopt e) 
                                  (fun-formal e) (fun-body e)))]
         ; if greater      check which is greater by calling eval-under-env for e1 and e2
-        [(ifgreater? e) (if (> (int-num (eval-under-env (ifgreater-e1 e) env)) (int-num (eval-under-env(ifgreater-e2 e) env)))
-                            (eval-under-env (ifgreater-e3 e) env)
-                            (eval-under-env (ifgreater-e4 e) env))]
+        [(ifgreater? e) (let ([v1 (eval-under-env (ifgreater-e1 e) env)]
+                              [v2 (eval-under-env (ifgreater-e2 e) env)])
+                              (if (> (int-num v1) (int-num v2))
+                                  (eval-under-env (ifgreater-e3 e) env)
+                                  (eval-under-env (ifgreater-e4 e) env)))]
         ;An mlet expression evaluates its first expression to a value v. Then it evaluates the second
         ;expression to a value, in an environment extended to map the name in the mlet expression to v.
         ; mlet (var e body)
@@ -79,27 +83,33 @@
         ;(i.e., the parameter name) to the result of the second subexpression.
         ; call (funexp actual)
         ; closure (env fun)
-        [(call? e) (if (closure? (eval-under-env(call-funexp e) env))
-                       ;evaluate        body of a closure function on closure    with env from closure fun
-                       (eval-under-env (fun-body (closure-fun (eval-under-env(call-funexp e) env))) 
-                                       ; check if function has a name or if it is anonymous
-                                       (if (fun-nameopt (closure-fun (eval-under-env(call-funexp e) env)))
-                                           ; if function has a name
-                                           ;make environment of closure
-                                           (append (closure-env(eval-under-env(call-funexp e) env))
-                                                   ; and pair of (function argument name bound to 
-                                                   (list (cons (fun-formal(closure-fun (eval-under-env(call-funexp e) env))) (eval-under-env(call-actual e) '()) )))
-                                           ; if function name is #f it gives for example -> (("x", 1))
-                                           (append (closure-env(eval-under-env(call-funexp e) env)) 
-                                                   (list (cons (fun-formal(closure-fun (eval-under-env(call-funexp e) env))) (eval-under-env(call-actual e) '()) )))))
-                       (error "Not a closure"))]
-        [(apair? e) (apair (eval-under-env(apair-e1 e) env)  (eval-under-env(apair-e2 e) env))]
+        [(call? e) 
+          (let ([e1 (eval-under-env (call-funexp e) env)]
+               [e2 (eval-under-env (call-actual e) env)])
+           (if (closure? e1)
+               ; evaluate closures functions body
+               (eval-under-env (fun-body (closure-fun e1))
+                               (if (fun-nameopt(closure-fun e1))
+                                           ; extended to map the function’s name to the closure
+                                   (append (list (cons (fun-nameopt(closure-fun e1)) e1)
+                                                 ; and the function’s argument-name to the result of the second subexpression.
+                                                 (cons (fun-formal(closure-fun e1)) e2)) 
+                                           ;in the closure’s environment
+                                           (closure-env e1))
+                                   (append (list (cons (fun-formal(closure-fun e1)) e2)) 
+                                           ;in the closure’s environment
+                                           (closure-env e1))))
+               (error "Not a closure" e1 )))]
+        [(apair? e) (apair (eval-under-env(apair-e1 e) env)  (if (aunit? (apair-e2 e))
+                                                                 (aunit)
+                                                                 (eval-under-env(apair-e2 e) env)))]
          ;(apair-e1 e)]
-        [(fst? e) (if (apair? (eval-under-env (fst-e e) '())) (apair-e1 (eval-under-env(fst-e e) '())) (error "Not a pair"))]
-        [(snd? e) (if (apair? (eval-under-env (snd-e e) '())) (apair-e2 (eval-under-env(snd-e e) '())) (error "Not a pair"))]
+        ; TODO optimize with let
+        [(fst? e) (if (apair? (eval-under-env (fst-e e) env)) (apair-e1 (eval-under-env(fst-e e) env)) (error "Not a pair"))]
+        [(snd? e) (if (apair? (eval-under-env (snd-e e) env)) (apair-e2 (eval-under-env(snd-e e) env)) (error "Not a pair"))]
         ;An isaunit expression evaluates its subexpression. If the result is an aunit expression, then the
         ;result for the isaunit expression is the mupl value (int 1), else the result is the mupl value
-        [(isaunit? e) (if (aunit? (eval-under-env(isaunit-e e) '())) (int 1) (int 0))]
+        [(isaunit? e) (if (aunit? (eval-under-env(isaunit-e e) env)) (int 1) (int 0))]
         [#t (error (format "bad MUPL expression: ~v" e))]))
 
 ;(> (int-num (eval-under-env (ifgreater-e1 e) env)) (int-num (eval-under-env(ifgreater-e2 e) env)))
@@ -122,19 +132,52 @@
       (mlet (car (car lstlst)) (cdr (car lstlst)) e2)
       (mlet (car (car lstlst)) (cdr (car lstlst)) (mlet* (cdr lstlst) e2))))
 
+
 (define (ifeq e1 e2 e3 e4) 
   (ifgreater e1 e2 (ifgreater e2 e1 e3 e4) (ifgreater e2 e1 e4 e3)))
 
 ;; Problem 4
 
+; Bind to the Racket variable mupl-map a mupl function that acts like map (as we used extensively
+; in ML). Your function should be curried: it should take a mupl function and return a mupl
+; function that takes a mupl list and applies the function to every element of the list returning a
+; new mupl list. Recall a mupl list is aunit or a pair where the second component is a mupl list.
+
+;fun map (f,xs) =
+;  case xs of
+;    [] => []
+;    | x::xs’ => (f x)::(map(f,xs’))
+
 (define mupl-map
-  (lambda (func)
-    closure '() (lambda (list)
-                  func)))
+  ; b -> holds mapping function
+  ; c -> holds recursive function (takes in list)
+  ; d -> represents list
+  (fun #f "b" 
+       (fun "c" "d"
+            ;if list is (aunit)
+           (ifaunit (var "d")
+                    ; return (aunit)
+                    (aunit)
+                    ;else call map (b) 
+                    (apair (call (var "b")
+                                 ;on first element of pair
+                                 (fst(var "d"))) 
+                           ; and recurively call c 
+                           (call (var "c") 
+                                 ; with smaller list
+                                 (snd (var "d"))))))))
+            
+                
+; Bind to the Racket variable mupl-mapAddN a mupl function that takes an mupl integer i and
+; returns a mupl function that takes a mupl list of mupl integers and returns a new mupl list of
+; mupl integers that adds i to every element of the list. Use mupl-map (a use of mlet is given to
+; you to make this easier).
 
 (define mupl-mapAddN 
   (mlet "map" mupl-map
-        "CHANGE (notice map is now in MUPL scope)"))
+        (fun #f "b"
+             (fun "c" "d"
+                  (call (call (var "map") (fun #f "x" (add (var "x") (var "b")))) (var "d"))))))
 
 ;; Challenge Problem
 
