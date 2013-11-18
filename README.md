@@ -26,3 +26,4 @@ building it.
 * Week4 code (no hw)
 * Week5 code + hw4
 * Week6 code + hw5
+* Week7 code
