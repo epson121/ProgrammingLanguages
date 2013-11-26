@@ -211,8 +211,15 @@ class Board
     displacement = @current_block.position
     (0..3).each{|index| 
       current = locations[index];
-      @grid[current[1]+displacement[1]][current[0]+displacement[0]] = 
-      @current_pos[index]
+      p "current[1]: " + current[1].to_s
+      p "displacement[1]: " + displacement[1].to_s
+      p "current[1]: " + current[0].to_s
+      p "displacement[1]: " + displacement[0].to_s
+      p "index: " + index.to_s
+      p "@current_pos: " + @current_pos.to_s
+      p "index of: " + @current_pos[index].to_s
+      p @current_pos[index] == nil
+      @grid[current[1]+displacement[1]][current[0]+displacement[0]] = @current_pos[index]
     }
     remove_filled
     @delay = [@delay - 2, 80].max

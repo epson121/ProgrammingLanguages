@@ -20,7 +20,7 @@ elsif ARGV.count != 1
 elsif ARGV[0] == "enhanced"
   runMyTetris
 elsif ARGV[0] == "original"
-  runTetris
+  runMyTetris
 else
   puts "usage: hw6runner.rb [enhanced | original]"
 end
