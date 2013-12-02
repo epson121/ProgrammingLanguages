@@ -174,7 +174,7 @@ class Line < GeometryValue
   end
 
   def eval_prog env 
-    self # all values evaluate to self
+    self 
   end
 
   def intersectPoint p
@@ -301,9 +301,9 @@ class LineSegment < GeometryValue
   end
 
   def inbetween(v, end1, end2)
-    if end1 - GeometryExpression.Epsilon <= v and v <= end2 + GeometryExpression.Epsilon
+    if end1 - GeometryExpression::Epsilon <= v and v <= end2 + GeometryExpression::Epsilon
       true
-    elsif end2 - GeometryExpression.Epsilon <= v and v <= end1 + GeometryExpression.Epsilon
+    elsif end2 - GeometryExpression::Epsilon <= v and v <= end1 + GeometryExpression::Epsilon
       true  
     else
       false
@@ -392,18 +392,16 @@ class Intersect < GeometryExpression
   end
 
   def preprocess_prog
-    self
+    Intersect.new(@e1.preprocess_prog, @e2.preprocess_prog)
   end
 
-  def shift(dx, dy)
-    self
-  end
 end
 
 class Let < GeometryExpression
   # *add* methods to this class -- do *not* change given code and do not
   # override any methods
   # Note: Look at Var to guide how you implement Let
+  attr_reader :s, :e1, :e2
   def initialize(s,e1,e2)
     @s = s
     @e1 = e1
@@ -411,15 +409,13 @@ class Let < GeometryExpression
   end
 
   def eval_prog env 
-    @e2.eval_prog([@s, @e1.eval_prog(env)] + env)
-  end
-
-  def shift(dx, dy)
-    self
+    #LineSegment, Intersect
+    # Intersect.eval_prog("a", LineSegment.eval_prog([]) + [])
+    @e2.eval_prog([[@s, @e1.eval_prog(env)]] + env)
   end
 
   def preprocess_prog
-    self
+    Let.new(@s, @e1.preprocess_prog, @e2.preprocess_prog)
   end
 end
 
@@ -429,14 +425,11 @@ class Var < GeometryExpression
   def initialize s
     @s = s
   end
+
   def eval_prog env # remember: do not change this method
     pr = env.assoc @s
     raise "undefined variable" if pr.nil?
     pr[1]
-  end
-
-  def shift(dx, dy)
-    self
   end
 
   def preprocess_prog
@@ -447,6 +440,7 @@ end
 class Shift < GeometryExpression
   # *add* methods to this class -- do *not* change given code and do not
   # override any methods
+  attr_reader :dx, :dy
   def initialize(dx,dy,e)
     @dx = dx
     @dy = dy
@@ -458,6 +452,6 @@ class Shift < GeometryExpression
   end
 
   def preprocess_prog
-    @e.eval_prog([]).preprocess_prog
+    Shift.new(@dx, @dy, @e.preprocess_prog)
   end
 end
