@@ -117,6 +117,51 @@ class Point < GeometryValue
     @x = x
     @y = y
   end
+
+  def eval_prog env 
+    self # all values evaluate to self
+  end
+
+  def intersectPoint p
+    if real_close_point(@x, @y, p.x, p.y)
+      Point.new(@x, @y)
+    else
+      NoPoints.new()
+    end
+  end
+
+  def intersectLine line
+    if real_close(@y, line.m*@x + line.b)
+      Point.new(@x, @y)
+    else
+      NoPoints.new()
+    end
+  end
+
+  def intersectVerticalLine v_line
+    if real_close(@x, v_line.x)
+      Point.new(@x, @y)
+    else
+      NoPoints.new()
+    end
+  end
+
+  def intersect geo_val
+    geo_val.intersectPoint(self)
+  end
+
+  def shift(dx,dy)
+    Point.new(@x+dx, @y+dy)
+  end
+
+  def preprocess_prog
+    self
+  end 
+
+  def intersectWithSegmentAsLineResult seg
+    seg.intersectPoint(self)
+  end
+
 end
 
 class Line < GeometryValue
@@ -127,6 +172,49 @@ class Line < GeometryValue
     @m = m
     @b = b
   end
+
+  def eval_prog env 
+    self # all values evaluate to self
+  end
+
+  def intersectPoint p
+    p.intersectLine(self)
+  end
+
+  def intersect geo_val
+    geo_val.intersectLine(self)
+  end
+
+  def intersectLine line
+    if real_close(@m, line.m)
+      if real_close(@b, line.b)
+        self
+      else
+        NoPoints.new()
+      end
+    else
+      x = (line.b-@b) / (@m - line.m)
+      y = @m * x + @b
+      Point.new(x, y)
+    end
+  end
+
+  def intersectVerticalLine v_line
+   Point(v_line.x, @m * v_line.x + @b)
+  end
+
+  def intersectWithSegmentAsLineResult seg
+    seg.intersectLine(self)
+  end
+
+  def preprocess_prog
+    self
+  end
+
+  def shift(dx,dy)
+    Line.new(@m, @b+dy-@m*dx)
+  end
+
 end
 
 class VerticalLine < GeometryValue
@@ -136,11 +224,47 @@ class VerticalLine < GeometryValue
   def initialize x
     @x = x
   end
+
+  def eval_prog env 
+    self # all values evaluate to self
+  end
+
+  def preprocess_prog
+    self
+  end
+
+  def intersect geo_val
+    geo_val.intersectVerticalLine(self)
+  end
+
+  def shift(dx, dy)
+    VerticalLine.new(@x+dx)
+  end
+
+  def intersectPoint p
+    p.intersectVerticalLine(self)
+  end
+
+  def intersectLine line
+    line.intersectVerticalLine(self)
+  end
+
+  def intersectVerticalLine v_line
+    if real_close(@x, v_line.x)
+      self
+    else
+      NoPoints.new()
+    end
+  end
+
+  def intersectWithSegmentAsLineResult seg
+    seg.intersectVerticalLine(self)
+  end
 end
 
 class LineSegment < GeometryValue
   # *add* methods to this class -- do *not* change given code and do not
-  # override any methods
+  # override selfany methods
   # Note: This is the most difficult class.  In the sample solution,
   #  preprocess_prog is about 15 lines long and 
   # intersectWithSegmentAsLineResult is about 40 lines long
@@ -150,6 +274,106 @@ class LineSegment < GeometryValue
     @y1 = y1
     @x2 = x2
     @y2 = y2
+  end
+
+  def eval_prog env 
+    self # all values evaluate to self
+  end
+
+  def shift(dx, dy)
+    LineSegment.new(@x1+dx, @y1+dy, @x2+dx, @y2+dy)
+  end
+
+  def intersect geo_val
+    geo_val.intersectWithSegmentAsLineResult(self)
+  end
+
+  def preprocess_prog
+    if real_close_point(@x1, @y1, @x2, @y2)
+      Point.new(x1, y1)
+    elsif @x2 < @x1
+      LineSegment.new(@x2, @y2, @x1, @y1)
+    elsif @y2 < @y1
+      LineSegment.new(@x1, @y2, @x2, @y1)
+    else
+      LineSegment.new(@x1, @y1, @x2, @y2)
+    end
+  end
+
+  def inbetween(v, end1, end2)
+    if end1 - GeometryExpression.Epsilon <= v and v <= end2 + GeometryExpression.Epsilon
+      true
+    elsif end2 - GeometryExpression.Epsilon <= v and v <= end1 + GeometryExpression.Epsilon
+      true  
+    else
+      false
+    end
+  end
+
+  def intersectPoint p
+    if inbetween(p.x, @x1, @x2) and inbetween(p.y, @y1, @y2)
+      Point.new(p.x, p.y)
+    else
+      NoPoints.new()
+    end
+  end
+
+  def intersectLine line
+    self
+  end
+
+  def intersectVerticalLine v_line
+    self
+  end
+
+  def intersectWithSegmentAsLineResult seg
+    ts1 = nil
+    ts2 = nil
+    if real_close(@x1, @x2)
+      if @y1 < seg.y2
+        if real_close(@y2, seg.y1)
+          Point.new(@x2, @y2)
+        elsif @y2 < seg.y1
+          NoPoints.new()
+        elsif @y2 > seg.y2
+          LineSegment.new(seg.x1, seg.y1, seg.x2, seg.y2)
+        else
+          LineSegment.new(seg.x1, seg.y1, @x2, @y2)
+        end
+      else
+        if real_close(seg.y2, @y1)
+          Point.new(seg.x2, seg.y2)
+        elsif seg.y2 < @y1
+          NoPoints.new()
+        elsif seg.y2 > @y2
+          LineSegment.new(@x1, @y1, @x2, @y2)
+        else
+          LineSegment.new(@x1, @y1, seg.x2, seg.y2)
+        end
+      end
+    else
+      if @x1 < seg.x1
+        if real_close(@x2, seg.x1)
+          Point.new(@x2, @y2)
+        elsif @x2 < seg.x1
+          NoPoints.new()
+        elsif @x2 > seg.x2
+          LineSegment.new(seg.x1, seg.y1, seg.x2, seg.y2)
+        else
+          LineSegment.new(seg.x1, seg.y1, @x2, @y2)
+        end
+      else
+        if real_close(seg.x2, @x1)
+          Point.new(seg.x2, seg.y2)
+        elsif seg.x2 < @x1
+          NoPoints.new()
+        elsif seg.x2 > @x2
+          LineSegment.new(@x1, @y1, @x2, @y2)
+        else
+          LineSegment.new(@x1, @y1, seg.x2, seg.y2)
+        end
+      end
+    end
   end
 end
 
@@ -162,6 +386,18 @@ class Intersect < GeometryExpression
     @e1 = e1
     @e2 = e2
   end
+
+  def eval_prog env 
+    @e1.eval_prog(env).intersect(@e2.eval_prog(env))
+  end
+
+  def preprocess_prog
+    self
+  end
+
+  def shift(dx, dy)
+    self
+  end
 end
 
 class Let < GeometryExpression
@@ -172,6 +408,18 @@ class Let < GeometryExpression
     @s = s
     @e1 = e1
     @e2 = e2
+  end
+
+  def eval_prog env 
+    @e2.eval_prog([@s, @e1.eval_prog(env)] + env)
+  end
+
+  def shift(dx, dy)
+    self
+  end
+
+  def preprocess_prog
+    self
   end
 end
 
@@ -186,6 +434,14 @@ class Var < GeometryExpression
     raise "undefined variable" if pr.nil?
     pr[1]
   end
+
+  def shift(dx, dy)
+    self
+  end
+
+  def preprocess_prog
+    self
+  end
 end
 
 class Shift < GeometryExpression
@@ -195,5 +451,13 @@ class Shift < GeometryExpression
     @dx = dx
     @dy = dy
     @e = e
+  end
+
+  def eval_prog env 
+    @e.eval_prog(env).shift(@dx, @dy)
+  end
+
+  def preprocess_prog
+    @e.eval_prog([]).preprocess_prog
   end
 end
