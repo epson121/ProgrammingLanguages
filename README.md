@@ -19,12 +19,21 @@ important ideas in modern languages have their roots in functional programming.
 Get ready to learn a fresh and beautiful way to look at software and how to have fun 
 building it.
 
-### Updates:
-* Week1 code + hw1
-* Week2 code + hw2
-* Week3 code + hw3
-* Week4 code (no hw)
-* Week5 code + hw4
-* Week6 code + hw5
-* Week7 code + hw6
-* Week8 code + hw7
+### Code:
+* Week1
+ * SML functions (and tests) related to calendar dates. Checking which date is older, map functions on list of dates etc.
+* Week2
+ * SML code for "name substitutions" (mapping functions to list elements, pattern matching, etc.), code for a variation of solitaire game   
+* Week3
+ * SML functions doing various things, practice of higher order functions and currying 
+* Week4
+ * No code, midterm exam was given instead
+* Week5
+ * Racket code - practice of streams and other racket related things
+* Week6
+ * MUPL (Made Up Programming Language) interpreter written in Racket (expression evaluation, closures, functions etc.)
+* Week7
+ * Ruby code - Creating enhancements to given Tetris game code. Adding new pieces, cheating etc.
+* Week8
+ * SML and Ruby - complete and extend two implementations of an interpreter for a small “language” for two-dimensional geometry objects
+
